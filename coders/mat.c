@@ -638,6 +638,7 @@ static Image *ReadMATImageV4(const ImageInfo *image_info,Image *image,
      Object parser loop.
     */
     ldblk=ReadBlobLSBLong(image);
+	if(EOFBlob(image)) return((Image *) NULL);
     if ((ldblk > 9999) || (ldblk < 0))
       break;
     HDR.Type[3]=ldblk % 10; ldblk /= 10;  /* T digit */
@@ -944,10 +945,11 @@ MATLAB_KO:
     }
 
   filepos = TellBlob(image);
-  while(!EOFBlob(image)) /* object parser loop */
+  while(filepos < GetBlobSize(image) && !EOFBlob(image)) /* object parser loop */
   {
     Frames = 1;
-    (void) SeekBlob(image,filepos,SEEK_SET);
+    if(filepos > GetBlobSize(image) || filepos < 0)
+      break;
     /* printf("pos=%X\n",TellBlob(image)); */
 
     MATLAB_HDR.DataType = ReadBlobXXXLong(image);
@@ -1185,6 +1187,7 @@ RestoreMSCWarning
   {
     if (logging) (void)LogMagickEvent(CoderEvent,GetMagickModule(),
              "  MAT cannot read scanrow %u from a file.", (unsigned)(MATLAB_HDR.SizeY-i-1));
+    ThrowReaderException(CorruptImageError,"UnexpectedEndOfFile");
     goto ExitLoop;
   }
         if((CellType==miINT8 || CellType==miUINT8) && (MATLAB_HDR.StructureFlag & FLAG_LOGICAL))
